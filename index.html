@@ -1,0 +1,478 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  Car, 
+  Truck, 
+  Bus, 
+  Navigation, 
+  Baby, 
+  Snowflake, 
+  Fuel, 
+  Shield, 
+  Users, 
+  Gauge, 
+  Calendar, 
+  Check, 
+  Share2, 
+  Zap, 
+  Briefcase,
+  Trophy,
+  CreditCard,
+  X
+} from 'lucide-react';
+
+// --- Confetti Component ---
+const Confetti = ({ active }) => {
+  const [particles, setParticles] = useState([]);
+
+  useEffect(() => {
+    if (active) {
+      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+      const newParticles = Array.from({ length: 50 }).map((_, i) => ({
+        id: i,
+        x: Math.random() * 100,
+        y: -10,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        delay: Math.random() * 0.5,
+        rotation: Math.random() * 360,
+        scale: 0.5 + Math.random() * 0.5
+      }));
+      setParticles(newParticles);
+    } else {
+      setParticles([]);
+    }
+  }, [active]);
+
+  if (!active) return null;
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-50">
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          className="absolute w-3 h-3 rounded-sm animate-confetti-fall"
+          style={{
+            left: `${p.x}%`,
+            top: `${p.y}%`,
+            backgroundColor: p.color,
+            transform: `rotate(${p.rotation}deg) scale(${p.scale})`,
+            animationDelay: `${p.delay}s`,
+            animationDuration: '2.5s'
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+// --- Main App Component ---
+const App = () => {
+  // --- State ---
+  const [selectedCarId, setSelectedCarId] = useState('compact');
+  const [duration, setDuration] = useState(3);
+  const [insurance, setInsurance] = useState('basic');
+  const [drivers, setDrivers] = useState(0);
+  const [mileage, setMileage] = useState('300');
+  const [addOns, setAddOns] = useState({
+    gps: false,
+    childSeat: false,
+    skiRack: false,
+    prepaidFuel: false
+  });
+  const [showQuote, setShowQuote] = useState(false);
+  const [booked, setBooked] = useState(false);
+
+  // --- Data ---
+  const cars = [
+    { id: 'economy', name: 'Economy', rate: 35, icon: Car, type: 'Eco', seats: 4, bags: 2, mpg: 40, color: 'text-emerald-500', bg: 'bg-emerald-100' },
+    { id: 'compact', name: 'Compact', rate: 45, icon: Car, type: 'Std', seats: 5, bags: 3, mpg: 35, color: 'text-blue-500', bg: 'bg-blue-100' },
+    { id: 'suv', name: 'SUV', rate: 75, icon: Truck, type: 'Sport', seats: 5, bags: 5, mpg: 22, color: 'text-orange-500', bg: 'bg-orange-100' },
+    { id: 'luxury', name: 'Luxury', rate: 120, icon: Car, type: 'Prem', seats: 4, bags: 3, mpg: 25, color: 'text-purple-600', bg: 'bg-purple-100' },
+    { id: 'van', name: 'Minivan', rate: 90, icon: Bus, type: 'Van', seats: 7, bags: 6, mpg: 20, color: 'text-indigo-500', bg: 'bg-indigo-100' },
+  ];
+
+  const selectedCar = cars.find(c => c.id === selectedCarId);
+
+  // --- Calculations ---
+  const costs = useMemo(() => {
+    const baseTotal = selectedCar.rate * duration;
+    
+    // Discount for 7+ days
+    const discountPercent = duration >= 7 ? 0.15 : 0;
+    const discountAmount = baseTotal * discountPercent;
+    
+    // Insurance
+    let insuranceDaily = 0;
+    if (insurance === 'basic') insuranceDaily = 15;
+    if (insurance === 'premium') insuranceDaily = 35;
+    const insuranceTotal = insuranceDaily * duration;
+
+    // Drivers ($12/day per extra driver)
+    const driversTotal = drivers * 12 * duration;
+
+    // Mileage
+    let mileageDaily = 0;
+    if (mileage === '300') mileageDaily = 0; // Included in base usually, or small fee? Let's make 300 std, 100 cheaper, unltd expensive
+    if (mileage === '100') mileageDaily = -5; // Discount for low miles
+    if (mileage === 'unlimited') mileageDaily = 25;
+    const mileageTotal = mileageDaily * duration;
+
+    // Add-ons
+    let addOnDaily = 0;
+    if (addOns.gps) addOnDaily += 8;
+    if (addOns.childSeat) addOnDaily += 10;
+    if (addOns.skiRack) addOnDaily += 12;
+    // Prepaid fuel is usually a flat fee per tank, estimating $50 flat for simplicity in this demo, or daily convenience fee
+    const fuelFlat = addOns.prepaidFuel ? 60 : 0;
+    const addOnsTotal = (addOnDaily * duration) + fuelFlat;
+
+    const subtotal = (baseTotal - discountAmount) + insuranceTotal + driversTotal + mileageTotal + addOnsTotal;
+    const taxes = subtotal * 0.08;
+    const fees = subtotal * 0.05;
+    const total = subtotal + taxes + fees;
+
+    // Mock Walk-in Price (25% higher)
+    const walkInTotal = total * 1.25;
+
+    return {
+      baseTotal,
+      discountAmount,
+      insuranceTotal,
+      driversTotal,
+      mileageTotal,
+      addOnsTotal,
+      taxes,
+      fees,
+      total,
+      walkInTotal
+    };
+  }, [selectedCar, duration, insurance, drivers, mileage, addOns]);
+
+  const toggleAddOn = (key) => {
+    setAddOns(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleBook = () => {
+    setBooked(true);
+    setTimeout(() => setBooked(false), 3000);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-20 relative overflow-x-hidden">
+      <Confetti active={booked} />
+      
+      {/* Navbar */}
+      <nav className="bg-white sticky top-0 z-40 border-b border-slate-200 px-4 py-3 shadow-sm flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <div className="bg-blue-600 text-white p-2 rounded-lg">
+            <Car size={20} />
+          </div>
+          <span className="font-bold text-lg tracking-tight">Rent<span className="text-blue-600">Calc</span></span>
+        </div>
+        <div className="text-xs font-semibold bg-slate-100 px-3 py-1 rounded-full text-slate-500">
+          Simulated Quote
+        </div>
+      </nav>
+
+      <main className="max-w-2xl mx-auto p-4 space-y-6">
+        
+        {/* Dynamic Total Header */}
+        <section className="bg-slate-900 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500 rounded-full blur-3xl opacity-20 -mr-10 -mt-10"></div>
+          <div className="relative z-10 flex flex-col items-center">
+             <span className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Estimated Total</span>
+             <div className="text-5xl font-black tracking-tighter flex items-baseline">
+                <span className="text-2xl mr-1 text-slate-400">$</span>
+                {costs.total.toFixed(2)}
+             </div>
+             {duration >= 7 && (
+               <div className="mt-2 bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 animate-pulse">
+                 <Zap size={12} />
+                 Long Trip Savings: ${costs.discountAmount.toFixed(0)} off!
+               </div>
+             )}
+          </div>
+        </section>
+
+        {/* Car Selection Deck */}
+        <section>
+          <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3 ml-1">Choose Your Ride</h3>
+          <div className="flex gap-3 overflow-x-auto pb-4 px-1 snap-x no-scrollbar">
+            {cars.map(car => (
+              <button
+                key={car.id}
+                onClick={() => setSelectedCarId(car.id)}
+                className={`
+                  flex-shrink-0 w-36 p-3 rounded-2xl border-2 transition-all duration-300 snap-center relative
+                  ${selectedCarId === car.id 
+                    ? `border-${car.color.split('-')[1]}-500 bg-white shadow-lg scale-105 ring-4 ring-${car.color.split('-')[1]}-100` 
+                    : 'border-transparent bg-white shadow-sm opacity-80 hover:opacity-100'}
+                `}
+              >
+                <div className={`
+                  w-full aspect-[4/3] rounded-xl mb-2 flex items-center justify-center transition-colors duration-300
+                  ${selectedCarId === car.id ? car.bg : 'bg-slate-100'}
+                `}>
+                  <car.icon 
+                    size={selectedCarId === car.id ? 48 : 32} 
+                    className={`transition-all duration-300 ${car.color}`} 
+                  />
+                </div>
+                <div className="text-left">
+                  <div className="font-bold text-slate-800 text-sm">{car.name}</div>
+                  <div className="text-xs text-slate-500 font-medium">${car.rate}/day</div>
+                  <div className="flex gap-2 mt-2 text-[10px] text-slate-400">
+                     <span className="flex items-center gap-0.5"><Users size={10} />{car.seats}</span>
+                     <span className="flex items-center gap-0.5"><Briefcase size={10} />{car.bags}</span>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* Interactive Visualization */}
+        <section className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 overflow-hidden relative min-h-[280px] flex flex-col items-center">
+           <div className="absolute top-4 left-4 z-10">
+              <span className="text-xs font-bold text-slate-300 uppercase">Configuration</span>
+           </div>
+
+           {/* The Car Stage */}
+           <div className="relative mt-8 mb-8 w-64 h-40 flex items-center justify-center transition-all duration-500">
+              {/* Main Car Icon */}
+              <selectedCar.icon 
+                size={140} 
+                className={`transition-all duration-500 ${selectedCar.color} drop-shadow-2xl`} 
+              />
+              
+              {/* Visual Add-ons */}
+              {/* Ski Rack (Top) */}
+              <div className={`absolute -top-6 transition-all duration-500 ${addOns.skiRack ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
+                 <Snowflake size={40} className="text-slate-700" />
+              </div>
+
+              {/* GPS (Front) */}
+              <div className={`absolute top-0 -right-4 transition-all duration-500 ${addOns.gps ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
+                 <div className="bg-white p-2 rounded-full shadow-lg border border-slate-100">
+                    <Navigation size={20} className="text-blue-500" />
+                 </div>
+              </div>
+
+              {/* Child Seat (Back) */}
+              <div className={`absolute top-0 -left-4 transition-all duration-500 ${addOns.childSeat ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
+                 <div className="bg-white p-2 rounded-full shadow-lg border border-slate-100">
+                    <Baby size={20} className="text-rose-500" />
+                 </div>
+              </div>
+              
+              {/* Prepaid Fuel (Bottom) */}
+              <div className={`absolute -bottom-2 right-10 transition-all duration-500 ${addOns.prepaidFuel ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                 <div className="bg-emerald-500 text-white p-1.5 rounded-lg shadow-lg">
+                    <Fuel size={16} />
+                 </div>
+              </div>
+           </div>
+
+           {/* Stacked Bar Chart Cost Visualizer */}
+           <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden flex">
+              <div className="bg-blue-500 h-full transition-all duration-500" style={{ width: `${(costs.baseTotal / costs.total) * 100}%` }} title="Car" />
+              <div className="bg-rose-400 h-full transition-all duration-500" style={{ width: `${(costs.insuranceTotal / costs.total) * 100}%` }} title="Insurance" />
+              <div className="bg-slate-400 h-full transition-all duration-500" style={{ width: `${((costs.taxes + costs.fees) / costs.total) * 100}%` }} title="Fees" />
+              <div className="bg-emerald-400 h-full transition-all duration-500" style={{ width: `${(costs.addOnsTotal / costs.total) * 100}%` }} title="Add-ons" />
+           </div>
+           <div className="flex justify-between w-full mt-2 text-[10px] text-slate-400 font-bold uppercase">
+              <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div>Rental</div>
+              <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-rose-400"></div>Insure</div>
+              <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-400"></div>Extras</div>
+           </div>
+        </section>
+
+        {/* Controls Grid */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          {/* Duration Slider */}
+          <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+            <div className="flex justify-between mb-4">
+              <span className="font-bold flex items-center gap-2 text-sm"><Calendar size={16} className="text-blue-500" /> Duration</span>
+              <span className="font-black text-blue-600">{duration} Days</span>
+            </div>
+            <input 
+              type="range" min="1" max="30" value={duration} 
+              onChange={(e) => setDuration(parseInt(e.target.value))}
+              className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600 mb-4"
+            />
+            {/* Calendar Viz */}
+            <div className="flex flex-wrap gap-1">
+              {Array.from({ length: 30 }).map((_, i) => (
+                <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i < duration ? 'bg-blue-500 scale-100' : 'bg-slate-200 scale-75'}`} />
+              ))}
+            </div>
+          </div>
+
+          {/* Insurance */}
+          <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+            <div className="flex justify-between mb-3">
+              <span className="font-bold flex items-center gap-2 text-sm"><Shield size={16} className="text-rose-500" /> Coverage</span>
+              <span className="text-xs font-bold uppercase text-slate-400">{insurance}</span>
+            </div>
+            <div className="flex bg-slate-100 p-1 rounded-xl">
+              {['none', 'basic', 'premium'].map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => setInsurance(opt)}
+                  className={`flex-1 py-2 rounded-lg text-xs font-bold capitalize transition-all duration-300 ${
+                    insurance === opt ? 'bg-white text-rose-500 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Drivers & Mileage Row */}
+          <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+            <div className="flex justify-between mb-2">
+               <span className="font-bold flex items-center gap-2 text-sm"><Users size={16} className="text-indigo-500" /> Drivers</span>
+               <span className="font-black text-indigo-500">{drivers}</span>
+            </div>
+            <div className="flex justify-between items-end h-8">
+               {[0, 1, 2, 3].map(n => (
+                 <button 
+                  key={n}
+                  onClick={() => setDrivers(n)}
+                  className={`transition-all duration-300 ${drivers >= n && n !== 0 ? 'text-indigo-500 scale-110' : 'text-slate-200 scale-90'}`}
+                 >
+                   <Users size={24} />
+                 </button>
+               ))}
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+            <div className="flex justify-between mb-3">
+               <span className="font-bold flex items-center gap-2 text-sm"><Gauge size={16} className="text-emerald-500" /> Mileage</span>
+            </div>
+            <select 
+              value={mileage} 
+              onChange={(e) => setMileage(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="100">100 mi/day (Save $)</option>
+              <option value="300">300 mi/day (Std)</option>
+              <option value="unlimited">Unlimited (Premium)</option>
+            </select>
+          </div>
+        </section>
+
+        {/* Add-ons Toggles */}
+        <section>
+           <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3 ml-1">Extras</h3>
+           <div className="grid grid-cols-2 gap-3">
+              {[
+                { id: 'gps', label: 'GPS Nav', icon: Navigation, color: 'text-blue-500' },
+                { id: 'childSeat', label: 'Child Seat', icon: Baby, color: 'text-rose-500' },
+                { id: 'skiRack', label: 'Ski Rack', icon: Snowflake, color: 'text-cyan-500' },
+                { id: 'prepaidFuel', label: 'Prepaid Fuel', icon: Fuel, color: 'text-emerald-500' },
+              ].map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => toggleAddOn(item.id)}
+                  className={`
+                    flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-200
+                    ${addOns[item.id] 
+                      ? 'border-slate-800 bg-slate-800 text-white' 
+                      : 'border-white bg-white text-slate-600 hover:border-slate-200'}
+                  `}
+                >
+                  <div className="flex items-center gap-3">
+                    <item.icon size={20} className={addOns[item.id] ? 'text-white' : item.color} />
+                    <span className="font-bold text-sm">{item.label}</span>
+                  </div>
+                  {addOns[item.id] && <Check size={16} className="text-emerald-400" />}
+                </button>
+              ))}
+           </div>
+        </section>
+
+        {/* Quote Summary Modal/Card */}
+        {showQuote ? (
+           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+              <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl relative">
+                 <button onClick={() => setShowQuote(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                    <X size={24} />
+                 </button>
+                 
+                 <div className="text-center mb-6">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 text-blue-600">
+                       <Trophy size={32} />
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900">Your Quote</h2>
+                    <p className="text-sm text-slate-500">Ready to hit the road?</p>
+                 </div>
+
+                 <div className="space-y-4 mb-6">
+                    <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                       <span className="text-sm font-medium text-slate-500">Walk-in Price</span>
+                       <span className="text-sm font-bold text-slate-400 line-through decoration-rose-500 decoration-2">${costs.walkInTotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                       <span className="text-sm font-bold text-emerald-700">Online Deal</span>
+                       <span className="text-xl font-black text-emerald-600">${costs.total.toFixed(2)}</span>
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-3">
+                    <button onClick={handleBook} className="col-span-2 bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-blue-200">
+                       Book Now
+                    </button>
+                    <button className="flex items-center justify-center gap-2 bg-slate-100 text-slate-700 py-3 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors">
+                       <Share2 size={16} /> Share
+                    </button>
+                    <button className="flex items-center justify-center gap-2 bg-slate-100 text-slate-700 py-3 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors">
+                       <CreditCard size={16} /> Save
+                    </button>
+                 </div>
+              </div>
+           </div>
+        ) : (
+           <div className="sticky bottom-4">
+              <button 
+                 onClick={() => setShowQuote(true)}
+                 className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold text-lg shadow-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors"
+              >
+                 Review Quote <span className="bg-white/20 px-2 py-0.5 rounded text-sm">${costs.total.toFixed(0)}</span>
+              </button>
+           </div>
+        )}
+
+      </main>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes confetti-fall {
+          0% { transform: translateY(-100%) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        .animate-confetti-fall {
+          animation-name: confetti-fall;
+          animation-timing-function: linear;
+        }
+        @keyframes fade-in {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.2s ease-out forwards;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}} />
+    </div>
+  );
+};
+
+export default App;
